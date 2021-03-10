@@ -1,8 +1,10 @@
 Link：https://leetcode-cn.com/problems/IQvJ9i/
 
+[原题地址]:
 
 
-### My Code
+
+### Code
 
 不知道为什么过不去，总是在报很奇怪的错误，我自己测试时没有问题的。
 有空看看题解
@@ -147,5 +149,91 @@ int main(){
 //            << param_5 << endl
 //            << param_6 << endl;
 }
+```
+
+参考题解
+
+```c++
+class BlackBox {
+private:
+    int n, m, cnt;
+
+    //辅助数组
+    vector<int> group;              //每个index对应的组（线路）的序号
+    vector<int> seq;                //每个index在自己组里的序号
+    vector<int> direct;             //每个index在自己组里正序时的光线方向
+    vector<vector<int>> table;      //由组号和组内的序号反查index的表
+    void record(int index, int g, int s, int d) {
+        group[index] = g;
+        seq[index] = s;
+        direct[index] = d;
+        table[g].push_back(index);
+    }
+
+    //核心数组
+    vector<set<int>> T;             //用于快速找下一个出口
+   
+    //辅助函数
+    int getNext(int index, int d) {
+        if (d == 1) return ((cnt - index) % cnt + cnt) % cnt;
+        else return ((2 * m - index) % cnt + cnt) % cnt;
+    }
+
+    //生成线路
+    void generate(int start, int d) {
+        if (group[start] != -1) return;
+        int g = T.size(), index = start, s = 0;     //g取T.size()，每生成一条线路，序号加1
+        T.push_back({});
+        table.push_back({});
+        record(index, g, s, d);
+        while (true) {
+            index = getNext(index, d);
+            if (index == start) return;
+            s++;
+            d = (d == 1 ? -1 : 1);
+            record(index, g, s, d);
+            if (index == 0 || index == m || index == m+n || index == 2*m+n) {
+                return;
+            }
+        }
+    }
+
+public:
+    BlackBox(int n, int m) : n(n), m(m), cnt(2*(m+n)) {
+        group = seq = direct = vector<int>(cnt, -1);
+
+        //生成包含顶点的两条线路，注意只会生成两条。因为是最先生成的，所以group值为0和1，下面会用到
+        generate(0, -1);
+        generate(m, 1);
+        generate(m+n, -1);
+        generate(2*m+n, 1);
+    }
+    
+    int open(int index, int direction) {
+        generate(index, 1);                             //在需要的时候生成，没必要在初始化时生成所有线路
+        int g = group[index];                           //获取组号
+        T[g].insert(seq[index]);                        //添加开孔
+        auto it = T[g].find(seq[index]);
+        if (direction == direct[index]) {               //正向搜索
+            it = next(it);
+            if (it == T[g].end()) {
+                if (g == 0 || g == 1) return index;     //如果是包含顶点的线路，直接折返
+                it = T[g].begin();                      //否则循环到开头
+            }
+        } else {                                        //反向搜索
+            if (it == T[g].begin()) {
+                if (g == 0 || g == 1) return index;     //如果是包含顶点的线路，直接折返
+                it = prev(T[g].end());                  //否则循环到结尾
+            } else {
+                it = prev(it);
+            }
+        }
+        return table[g][*it];
+    }
+    
+    void close(int index) {
+        T[group[index]].erase(seq[index]);
+    }
+};
 ```
 
